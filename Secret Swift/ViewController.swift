@@ -11,6 +11,7 @@ import UIKit
 
 class ViewController: UIViewController {
     @IBOutlet var secret: UITextView!
+    var password: String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -21,9 +22,12 @@ class ViewController: UIViewController {
         notificationCenter.addObserver(self, selector: #selector(adjustForKeyboard), name: UIResponder.keyboardWillHideNotification, object: nil)
         notificationCenter.addObserver(self, selector: #selector(adjustForKeyboard), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
         notificationCenter.addObserver(self, selector: #selector(saveSecretMessage), name: UIApplication.willResignActiveNotification, object: nil)
-
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(saveSecretMessage))
+        navigationItem.rightBarButtonItem?.isEnabled = false
     }
     
+    // This method launches the authentication process to unlock the app
     @IBAction func authenticateTapped(_ sender: Any) {
         let context = LAContext()
         var error: NSError?
@@ -52,6 +56,7 @@ class ViewController: UIViewController {
         }
     }
     
+    // This method takes care of the keyboard when on screen
     @objc func adjustForKeyboard(notification: Notification) {
         guard let keyboardValue = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue else { return }
         
@@ -70,8 +75,11 @@ class ViewController: UIViewController {
         secret.scrollRangeToVisible(selectedRange)
     }
 
+    // Once biometry is done, this method unlocks the app and retrieves the content
     func unlockSecretMessage() {
         secret.isHidden = false
+        navigationItem.rightBarButtonItem?.isEnabled = true
+        
         title = "Secret stuff!"
         
         if let text = KeychainWrapper.standard.string(forKey: "SecretMessage") {
@@ -80,12 +88,14 @@ class ViewController: UIViewController {
 //        secret.text = KeychainWrapper.standard.string(forKey: "SecretMessage") ?? ""
     }
     
+    // This method "locks" the app, i.e. hides its content
     @objc func saveSecretMessage() {
         guard secret.isHidden == false else { return }
         
         KeychainWrapper.standard.set(secret.text, forKey: "SecretMessage")
         secret.resignFirstResponder()
         secret.isHidden = true
+        navigationItem.rightBarButtonItem?.isEnabled = false
         title = "Nothing to see here"
     }
 }
