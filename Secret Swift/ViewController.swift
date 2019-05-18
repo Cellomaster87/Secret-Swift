@@ -11,7 +11,6 @@ import UIKit
 
 class ViewController: UIViewController {
     @IBOutlet var secret: UITextView!
-    var password: String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
