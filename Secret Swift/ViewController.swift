@@ -11,6 +11,7 @@ import UIKit
 
 class ViewController: UIViewController {
     @IBOutlet var secret: UITextView!
+    var password: String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,6 +25,29 @@ class ViewController: UIViewController {
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(saveSecretMessage))
         navigationItem.rightBarButtonItem?.isEnabled = false
+        
+        if let savedPassword = KeychainWrapper.standard.string(forKey: "password") {
+            password = savedPassword
+        } else {
+            // password not set
+            let setPwdAC = UIAlertController(title: "Set password", message: "Protect your secret text with a password", preferredStyle: .alert)
+            setPwdAC.addTextField { (textField) in
+                textField.isSecureTextEntry = true
+                textField.placeholder = "Set password"
+            }
+            setPwdAC.textFields?[0].isSecureTextEntry = true
+            
+            let setPwdAction = UIAlertAction(title: "Set password", style: .default) { [weak self, weak setPwdAC] (_) in
+                guard let password = setPwdAC?.textFields?[0].text else { return }
+                self?.password = password
+                KeychainWrapper.standard.set(password, forKey: "password")
+            }
+            
+            setPwdAC.addAction(setPwdAction)
+            setPwdAC.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            
+            present(setPwdAC, animated: true)
+        }
     }
     
     // This method launches the authentication process to unlock the app
@@ -41,9 +65,26 @@ class ViewController: UIViewController {
                         self?.unlockSecretMessage()
                     } else {
                         // error
-                        let ac = UIAlertController(title: "Authentication failed", message: "You could not be verified; please try again.", preferredStyle: .alert)
-                        ac.addAction(UIAlertAction(title: "OK", style: .default))
-                        self?.present(ac, animated: true)
+                        let authFailedAC = UIAlertController(title: "Authentication failed", message: "Please enter your password to unlock the secret content", preferredStyle: .alert)
+                        authFailedAC.addTextField { (textField) in
+                            textField.isSecureTextEntry = true
+                            textField.placeholder = "Enter password"
+                        }
+                        
+                        let enterPwdAction = UIAlertAction(title: "Unlock", style: .default) { [weak self, weak authFailedAC] (_) in
+                            guard let password = authFailedAC?.textFields?[0].text else { return }
+                            
+                            if password == self?.password {
+                                self?.unlockSecretMessage()
+                            } else {
+                                let ac = UIAlertController(title: "Authentication failed", message: "You could not be verified; please try again.", preferredStyle: .alert)
+                                ac.addAction(UIAlertAction(title: "OK", style: .default))
+                                self?.present(ac, animated: true)
+                            }
+                        }
+                        
+                        authFailedAC.addAction(enterPwdAction)
+                        self?.present(authFailedAC, animated: true)
                     }
                 }
             }
